@@ -1,0 +1,30 @@
+name: Library API Deployment
+
+on:
+    push:
+        branches: [production]
+    pull_request:
+        branches: [production]
+
+jobs:
+    deploy:
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Deploy using ssh
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.HOST }}
+                  username: ${{ secrets.USERNAME }}
+                  port: 22
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                      cd /var/www/nodejs/digital_library_api/
+                      git checkout production
+                      git pull
+                      yarn install --frozen-lockfile
+                      yarn migrate:prod
+                      yarn seed:prod
+                      yarn build
+                      pm2 restart library-api
